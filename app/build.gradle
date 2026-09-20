@@ -44,7 +44,17 @@ tasks.register("copyLargestDexAsJava") {
     dependsOn(":settingsadapter:assembleDebug")
 
     doLast {
-        def apkFile = fileTree("$rootDir/settingsadapter/build/intermediates/apk/debug")
+        // AGP 8.x places the final APK under outputs; keep intermediates as fallback
+        def apkCandidates = [
+                "$rootDir/settingsadapter/build/outputs/apk/debug",
+                "$rootDir/settingsadapter/build/intermediates/apk/debug"
+        ]
+        def apkDir = apkCandidates.find { file(it).directory }
+        if (apkDir == null) {
+            throw new GradleException("settingsadapter debug APK directory not found. Tried: ${apkCandidates}")
+        }
+
+        def apkFile = fileTree(apkDir)
                 .matching { include "*.apk" }
                 .singleFile
 
