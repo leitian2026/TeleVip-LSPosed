@@ -1,109 +1,27 @@
-apply plugin: 'com.android.application'
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
 
-android {
-    namespace 'com.my.televip'
-    compileSdk 36
-
-    defaultConfig {
-        applicationId "com.my.televip"
-        minSdk 27
-        targetSdk 36
-        versionCode 335
-        versionName "3.6.3"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables {
-            useSupportLibrary true
-        }
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
     }
+    dependencies {
+        classpath libs.gradle
 
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-
-}
-
-dependencies {
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.code.gson:gson:2.13.2")
-    implementation(libs.jcal)
-    compileOnly libs.api
-    implementation(libs.gson)
-    implementation(libs.appcompat)
-    implementation(libs.material)
-}
-tasks.register("copyLargestDexAsJava") {
-
-    dependsOn(":settingsadapter:assembleDebug")
-
-    doLast {
-        // AGP 8.x places the final APK under outputs; keep intermediates as fallback
-        def apkCandidates = [
-                "$rootDir/settingsadapter/build/outputs/apk/debug",
-                "$rootDir/settingsadapter/build/intermediates/apk/debug"
-        ]
-        def apkDir = apkCandidates.find { file(it).directory }
-        if (apkDir == null) {
-            throw new GradleException("settingsadapter debug APK directory not found. Tried: ${apkCandidates}")
-        }
-
-        def apkFile = fileTree(apkDir)
-                .matching { include "*.apk" }
-                .singleFile
-
-        def tempDir = new File(buildDir, "tmp/dexExtract")
-        tempDir.mkdirs()
-
-        copy {
-            from zipTree(apkFile)
-            into tempDir
-            include "classes*.dex"
-        }
-
-        def dexFiles = fileTree(tempDir).matching { include "classes*.dex" }.files
-
-        if (dexFiles.isEmpty()) {
-            throw new GradleException("No dex files found!")
-        }
-
-        def largestDex = dexFiles.max { it.length() }
-
-        // قراءة dex كـ bytes
-        byte[] dexBytes = largestDex.bytes
-
-        def hex = dexBytes.collect { String.format("%02X", it) }.join("")
-
-        def outputDir = file("$projectDir/src/main/java/com/my/televip/dex")
-        outputDir.mkdirs()
-
-        def javaFile = new File(outputDir, "DexHolder.java")
-
-        javaFile.text = """
-package com.my.televip.dex;
-
-public class DexHolder {
-    public static final byte[] DEX_BYTES = hexToBytes("${hex}");
-
-    private static byte[] hexToBytes(String hex) {
-        int len = hex.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-                                + Character.digit(hex.charAt(i+1), 16));
-        }
-        return data;
-    }
-}
-"""
-        println "Generated DexHolder with largest dex: ${largestDex.name}"
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
     }
 }
 
-preBuild.dependsOn("copyLargestDexAsJava")
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+        maven { url 'https://api.xposed.info/' }
+    }
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}
